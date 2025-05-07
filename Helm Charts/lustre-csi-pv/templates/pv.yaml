@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.persistence.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "lustre-csi-pv.name" . }}
+    helm.sh/chart: {{ include "lustre-csi-pv.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  capacity:
+    storage: {{ .Values.persistence.size }}
+  volumeMode: Filesystem
+  accessModes:
+    - {{ .Values.persistence.accessMode | quote }}
+  storageClassName: lustre-fs
+  persistentVolumeReclaimPolicy: {{ .Values.persistence.reclaimPolicy }}
+  # Reserve this PV for the matching PVC.
+  claimRef:
+    kind: PersistentVolumeClaim
+    name: {{ .Values.persistence.name }}
+    namespace: {{ .Release.Namespace }}
+  csi:
+    driver: lustre-csi.hpe.com
+    volumeHandle: {{ .Values.persistence.csi.volumeHandle }}/{{ .Values.persistence.name }}
+    fsType: lustre

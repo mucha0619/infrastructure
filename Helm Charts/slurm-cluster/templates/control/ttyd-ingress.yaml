@@ -1,0 +1,47 @@
+{{- if .Values.control.ttyd.enabled -}}
+{{- $name := .Release.Name }}
+{{ $ctrname:= printf "%s-ctr" $name }}
+{{ $cptname:= printf "%s-cpt" $name }}
+{{ $namespace := .Release.Namespace }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $ctrname }}-ttyd
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+  {{- with .Values.control.ttyd.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.control.ttyd.ingress.className }}
+  ingressClassName: {{ .Values.control.ttyd.ingress.className }}
+  {{- end }}
+  {{- if .Values.control.ttyd.ingress.tls }}
+  tls:
+    {{- range .Values.control.ttyd.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.control.ttyd.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if .pathType }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            backend:
+              service:
+                name: {{ $ctrname }}-ttyd
+                port:
+                  number: 7681
+          {{- end }}
+    {{- end }}
+{{- end }}

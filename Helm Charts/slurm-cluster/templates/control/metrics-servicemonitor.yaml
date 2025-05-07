@@ -1,0 +1,27 @@
+{{- if and .Values.control.metrics.enabled }}
+{{ $name := .Release.Name }}
+{{ $ctrname:= printf "%s-ctr" $name }}
+{{ $cptname:= printf "%s-cpt" $name }}
+{{ $namespace := .Release.Namespace }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app: {{ $ctrname }}
+    slurm.cluster/role: ctr
+  name: {{ $name }}
+  namespace: {{ $namespace }}
+spec:
+  endpoints:
+    - interval: 15s
+      path: /metrics
+      port: metrics
+  namespaceSelector:
+    matchNames:
+      - {{ $namespace }}
+  selector:
+    matchLabels:
+      app: {{ $ctrname }}
+      slurm.cluster/role: ctr
+{{- end }}

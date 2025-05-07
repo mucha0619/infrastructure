@@ -1,0 +1,42 @@
+{{ if .Values.persistence.csi.subDir }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-pre-install-job
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: "pre-install"
+  labels:
+    app.kubernetes.io/name: {{ include "lustre-csi-pv.name" . }}
+    helm.sh/chart: {{ include "lustre-csi-pv.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ttlSecondsAfterFinished: 10
+  template:
+    spec:
+      nodeName: hqcomp01
+      securityContext:
+        runAsUser: {{ .Values.securityContext.runAsUser | default 1000 }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup | default 1000 }}
+        fsGroup: {{ .Values.securityContext.fsGroup | default 1000 }}
+      containers:
+      - image: 172.236.5.21:31500/etc/busybox:1.0.0
+        name: create-dir
+        command: 
+        - /bin/sh
+        - -c
+        args: 
+        - "mkdir /mnt/lustre/{{ .Values.persistence.name }}; \
+            chmod 777 /mnt/lustre/{{ .Values.persistence.name }};"
+        volumeMounts:
+          - name: host-lustre
+            mountPath: /mnt/lustre
+      volumes:
+        - name: host-lustre
+          hostPath:
+            path: {{ .Values.persistence.csi.rootDir | default "/mnt/lustre/k8s-lustre-csi" }}
+            type: Directory
+      restartPolicy: Never
+  backoffLimit: 5
+{{ end }}

@@ -1,0 +1,171 @@
+# A40 driver
+
+sudo tee /etc/modprobe.d/blacklist-nouveau.conf <<EOF
+options nouveau modeset=0
+EOF
+sudo dracut --force
+sudo dnf config-manager --set-enabled crb
+sudo dnf install     https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm     https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-9.noarch.rpm
+sudo dnf config-manager --add-repo http://developer.download.nvidia.com/compute/cuda/repos/rhel9/$(uname -i)/cuda-rhel9.repo
+sudo dnf install kernel-headers-$(uname -r) kernel-devel-$(uname -r) tar bzip2 
+dnf -y install make automake gcc gcc-c++ pciutils elfutils-libelf-devel libglvnd-opengl libglvnd-glx libglvnd-devel acpid pkgconfig dkms
+sudo dnf install kernel-headers-$(uname -r) kernel-devel-$(uname -r) tar bzip2 
+sudo dnf module install nvidia-driver:latest-dkms
+sudo dnf module install nvidia-driver:latest-dkms
+sudo dnf module install nvidia-driver:latest-dkms
+dnf module list nvidia-driver
+reboot
+sudo dkms build nvidia/565.57.01
+sudo dkms install nvidia/565.57.01
+
+
+
+# ubuntu 22.04
+&& sudo apt upgrade –y
+
+
+sudo apt update -y
+sudo apt install build-essential -y
+sudo apt install nvidia-driver-535 -y
+
+sudo tee /etc/modprobe.d/blacklist-nouveau.conf <<EOF
+options nouveau modeset=0
+EOF
+
+sudo update-initramfs -u
+sudo apt install nvidia-driver-535 -y
+apt install -y nvidia-driver-470
+reboot
+
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCxHWeXTB6B1JByZxS9hSVjpUv5qpdxTHYs7+D2jDmZLy+8DmyPHoSzbZUNHQAOVHURuMfLYAaKgg1vojrTD57xhNY15DI2oDLCPYxvqd4UceiGIxPvZoFj322+GgYIVp4PCqG1zHpd4ZRMvgj7Ltxm8uchVZkUnzgt2JB9Hzmbvzr6J5E2Dj2E53FetqueR5tl5VIvNrVSaXUywkRtf5ibtJ66uSCANtzBoUNa2io1x54/SbRtSHJLpurW4RGNzNwIg21RRve7aj4C1G5maYTt1CCBHmHdZ5oWQ805Lt3sAfkfYxdZvReRS6doMSHF8iZ+DcOfxYTcfBfrXHT8g8lq0wl+GtMB7bNH/+YZEaIF5ARQccNQpUnLC7u6NuWeeARet//eI3OtEA1kztXEqqDhegLbsCwuH7crxOrMgwWHvafCn7tl9PBk7rYSDz9I+dHhedOfc2Jt279DFWw6f0ZhOip5jbXSF2AzRUd5op4/LrxNCFT7jWlFgNkvz0Yo7K0= root@ai-server-01
+
+# ubuntu 20.04
+
+sudo apt update && sudo apt upgrade –y
+sudo apt install build-essential -y
+
+
+sudo tee /etc/modprobe.d/blacklist-nouveau.conf <<EOF
+options nouveau modeset=0
+EOF
+
+sudo update-initramfs -u
+sudo apt install nvidia-driver-470
+reboot
+
+
+
+
+# Centos yum 안될때
+
+[root@instance-juyeon ~]# cd /etc/yum.repos.d
+
+## 기존 yum 관련 레파지토리 백업 폴더 생성 및 이동
+[root@instance-juyeon yum.repos.d]# mkdir backup
+[root@instance-juyeon yum.repos.d]# mv CentOS-* backup
+
+## 새 레파지토리 파일 생성
+[root@instance-juyeon yum.repos.d]# vi CentOS-BASE.repo
+
+
+[base]
+name=CentOS-$releasever - Base
+
+baseurl=http://centos.mirror.cdnetworks.com/7/os/x86_64
+gpgcheck=1
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+#released updates
+[updates]
+name=CentOS-$releasever - Updates
+baseurl=http://centos.mirror.cdnetworks.com/7/updates/x86_64
+gpgcheck=1
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+#additional packages that may be useful
+[extras]
+name=CentOS-$releasever - Extras
+baseurl=http://centos.mirror.cdnetworks.com/7/extras/x86_64
+gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+#additional packages that extend functionality of existing packages
+[centosplus]
+name=CentOS-$releasever - Plus
+baseurl=http://centos.mirror.cdnetworks.com/7/centosplus/x86_64
+gpgcheck=1
+enabled=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+
+
+## yum cache 삭제
+[root@instance-juyeon yum.repos.d]# yum clean all
+
+
+
+Openstack 관련하여 내용 전달드립니다.
+현시간 이후로, GPU Instance 생성시 GPU Exporter를 설치하도록 VM Infra as a service 서비스에  반영하였습니다. 현시간 이후로 생성되는 GPU는 하기내용중 2번만 해당사항이고, 이전 생성건에 대해서는 1,2번 둘다 작업이 필요합니다.
+이전 생성된 건에 대하여는 수동으로 서비스 등록이 필요하고,
+이전 생성된 건 + 앞으로 신규 생성될 GPU Instance에는 관리대상으로 등록작업을 해주셔야합니다.
+관련 정보는 하기를 참고해주세요.
+ 
+ 
+[DBMS 접속정보]
+IP: 150.183.252.11
+Port: 30016
+ID: root
+Password: 1234
+DBMS: Mysql
+ 
+ 
+[VM Exporter 대상 조회 쿼리]
+SELECT m.meta_cd
+      ,m.col_1 as 'Floating IP'
+      ,m.col_2 as 'Host Name'
+      ,m.col_3 as 'Instace Id'
+  FROM cm.tb_cm_meta_d m
+WHERE m.meta_cd = 'CM07'
+   and m.use_yn = 1
+ 
+[VM Exporter 대상 추가 쿼리  (CM07, admin 고정, floating ip, hostname, instance id만 변경하여 등록.)]
+INSERT INTO cm.tb_cm_meta_d(meta_cd, col_1, col_2, col_3, created_by) values ('CM07','floating ip','hostname','instance id','admin');
+ 
+[VM Exporter 서비스 수동 등록 명령어]
+curl -o gpuUsageExporter https://raw.githubusercontent.com/asete93/gpu-exporter/main/gpuUsageExporter
+chmod +x ./gpuUsageExporter
+mv ./gpuUsageExporter /usr/bin/gpuUsageExporter
+ 
+ 
+cat > /etc/systemd/system/gpuUsageExporter.service <<EOF
+[Unit]
+Description=gpuUsageExporter.service
+After=network.target
+ 
+[Service]
+ExecStart=/usr/bin/gpuUsageExporter
+Restart=always
+User=root
+Group=root
+ 
+[Install]
+WantedBy=multi-user.target
+EOF
+ 
+if grep -E 'CentOS|Rocky|Red Hat' /etc/os-release > /dev/null; then
+    if grep -q "SELINUX=enforcing" /etc/selinux/config; then
+        sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+  setenforce 0
+    elif grep -q "SELINUX=permissive" /etc/selinux/config; then
+        sed -i 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
+  setenforce 0
+    fi
+else
+    echo "SELinux changes skipped: Not running on RHEL, CentOS, or Rocky Linux."
+fi
+ 
+systemctl daemon-reload
+systemctl enable gpuUsageExporter.service
+systemctl start gpuUsageExporter.service

@@ -1,0 +1,27 @@
+{{ $name := .Release.Name }}
+{{ $secretname := printf "%s-secret" $name}}
+{{ $namespace := .Release.Namespace }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}-pre-delete-job
+  namespace: {{ $namespace }}
+  annotations:
+    helm.sh/hook: "pre-delete"
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      containers:
+      - image: {{ .Values.secret.repository | default "172.236.5.21:31500/slurm/slurm-secret"}}:{{ .Values.secret.tag }}
+        name: delete-secret
+        imagePullPolicy: {{ .Values.secret.pullPolicy }}
+        command: 
+        - "/bin/bash"
+        - "-c"
+        args:
+        - "kubectl delete secret -n {{ $namespace }} {{ $secretname }}"
+      restartPolicy: Never
+  backoffLimit: 5

@@ -1,0 +1,25 @@
+{{- if .Values.control.ttyd.enabled }}
+{{ $name := .Release.Name }}
+{{ $ctrname:= printf "%s-ctr" $name }}
+{{ $cptname:= printf "%s-cpt" $name }}
+{{ $namespace := .Release.Namespace }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $ctrname }}-ttyd
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app: {{ $ctrname }}
+    slurm.cluster/role: ctr
+spec:
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    name: ttyd
+    port: 7681
+    targetPort: 7681
+  selector:
+    app: {{ $ctrname }}
+    slurm.cluster/role: ctr
+{{- end }}

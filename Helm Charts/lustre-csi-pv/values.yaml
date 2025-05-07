@@ -1,0 +1,20 @@
+
+# AccessMode: ReadWriteOnce; ReadOnlyMany; ReadWriteMany
+# ReclaimPolicy: Retain; Delete; Recycle(deprecated)
+# csi.VolumeHandle: Lustre storage path e.g. 172.0.0.1@tcp:/maui
+# csi.rootDir: Lustre storage mounted path in physical node
+# csi.rootDir: Directory name for create
+persistence:
+  name: lustre-csi-pvc
+  accessMode: ReadWriteMany
+  size: 5Gi 
+  reclaimPolicy: Retain
+  csi:
+    volumeHandle: "172.0.0.1@tcp:/maui"
+    rootDir: "/mnt/lustre/k8s-lustre-csi"
+
+# default values are 1000
+securityContext: {}
+  # fsGroup: ""
+  # runAsUser: ""
+  # runAsGroup: ""

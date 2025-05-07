@@ -1,0 +1,16 @@
+{{ $name := .Release.Name }}
+{{ $namespace := .Release.Namespace }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    helm.sh/hook: "pre-install"
+    helm.sh/hook-weight: "1"
+  name: {{ $name }}-role
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "delete"]

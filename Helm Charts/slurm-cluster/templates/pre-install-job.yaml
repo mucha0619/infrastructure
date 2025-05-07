@@ -1,0 +1,33 @@
+{{ $name := .Release.Name }}
+{{ $secretname := printf "%s-secret" $name}}
+{{ $namespace := .Release.Namespace }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}-pre-install-job
+  namespace: {{ $namespace }}
+  annotations:
+    helm.sh/hook: "pre-install"
+    helm.sh/hook-weight: "3"
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      containers:
+      - image: {{ .Values.secret.repository | default "172.236.5.21:31500/slurm/slurm-secret"}}:{{ .Values.secret.tag }}
+        name: create-secret
+        imagePullPolicy: {{ .Values.secret.pullPolicy }}
+        env:
+        - name: NAMESPACE
+          value: {{ $namespace }}
+        - name: NAME
+          value: {{ $secretname }}
+        command: 
+        - /bin/sh
+        - -c
+        args: 
+        - "./run.sh"
+      restartPolicy: Never
+  backoffLimit: 5

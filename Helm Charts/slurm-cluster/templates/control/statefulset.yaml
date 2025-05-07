@@ -1,0 +1,86 @@
+{{ $name := .Release.Name }}
+{{ $ctrname:= printf "%s-ctr" $name }}
+{{ $cptname:= printf "%s-cpt" $name }}
+{{ $namespace := .Release.Namespace }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $ctrname }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app: {{ $ctrname }}
+    slurm.cluster/role: ctr
+spec:
+  replicas: {{ .Values.control.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ $ctrname }}
+      slurm.cluster/role: ctr
+  serviceName: {{ $ctrname }}
+  template:
+    metadata:
+      labels:
+        app: {{ $ctrname }}
+        slurm.cluster/role: ctr
+    spec:
+    {{- if .Values.control.nodeSelector }}
+      nodeSelector:
+    {{ toYaml .Values.control.nodeSelector | indent 4 }}
+    {{- end }}
+      securityContext:
+        fsGroup: 64030
+      containers:
+      - name: slurm-control
+        image: {{ .Values.control.repository | default "172.236.5.21:31500/slurm/slurm-control"}}:{{ .Values.control.tag }}
+        command: ["/bin/bash", "-c", "./entrypoint.sh"]
+        imagePullPolicy: {{ .Values.control.pullPolicy }}
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1"
+          limits:
+            memory: "2Gi"
+            cpu: "2"
+        ports:
+        - containerPort: 6817
+          name: slurmctld
+          protocol: TCP
+        - containerPort: 6819
+          name: slurmd
+          protocol: TCP
+        - containerPort: 7681
+          name: ttyd
+          protocol: TCP
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        securityContext:
+          runAsUser: 64030
+          runAsGroup: 64030
+        volumeMounts:
+        - name: slurm-key
+          mountPath: /etc/slurm/slurm.key
+          subPath: slurm.key
+        - name: slurm-config
+          mountPath: /etc/slurm/slurm.conf
+          subPath: slurm.conf
+        {{- if .Values.persistence.enabled }}
+        - name: shared-workdir
+          mountPath: /home/slurm/workdir
+        {{- end }}
+      volumes:
+      - name: slurm-key
+        secret:
+          secretName: {{ $name }}-secret
+          defaultMode: 400
+      - name: slurm-config
+        configMap:
+          name: {{ $name }}-configmap
+      - name: shared-workdir
+        {{- if .Values.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ if .Values.persistence.existingClaim }}{{ .Values.persistence.existingClaim }}{{- else }}{{ $name }}-pvc{{- end }}
+        {{- else }}
+        emptyDir: {}
+        {{- end }}

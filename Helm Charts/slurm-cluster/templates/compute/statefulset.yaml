@@ -1,0 +1,99 @@
+{{ $name := .Release.Name }}
+{{ $ctrname:= printf "%s-ctr" $name }}
+{{ $cptname:= printf "%s-cpt" $name }}
+{{ $namespace := .Release.Namespace }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $cptname }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app: {{ $cptname }}
+    slurm.cluster/role: cpt
+spec:
+  replicas: {{ .Values.compute.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ $cptname }}
+      slurm.cluster/role: cpt
+  serviceName: {{ $cptname }}
+  template:
+    metadata:
+      labels:
+        app: {{ $cptname }}
+        slurm.cluster/role: cpt
+    spec:
+    {{- if .Values.compute.nodeSelector }}
+      nodeSelector:
+    {{ toYaml .Values.compute.nodeSelector | indent 4 }}
+    {{- end }}
+      securityContext:
+        fsGroup: 64030
+      containers:
+      - name: slurm-compute
+        image: {{ .Values.compute.repository | default "172.236.5.21:31500/slurm/slurm-compute"}}:{{ .Values.compute.tag }}
+        command: ["/bin/bash", "-c", "slurmd -D"]
+        imagePullPolicy: {{ .Values.compute.pullPolicy }}
+        {{- if .Values.compute.resources }}
+        resources:
+          requests:
+          {{- toYaml .Values.compute.resources.requests | nindent 12 }}
+          {{- if .Values.compute.resources.gpu.enabled }}
+            {{ printf "%s.com/gpu " .Values.compute.resources.gpu.type }}: {{ printf "%d" (int .Values.compute.resources.gpu.resourceCount) }}
+          {{- end }}
+          limits:
+          {{- toYaml .Values.compute.resources.limits | nindent 12 }}
+          {{- if .Values.compute.resources.gpu.enabled }}
+            {{ printf "%s.com/gpu " .Values.compute.resources.gpu.type }}: {{ printf "%d" (int .Values.compute.resources.gpu.resourceCount) }}
+          {{- end }}
+        {{- else }}
+          requests:
+            memory: "1Gi"
+            cpu: "1"
+          limits:
+            memory: "2Gi"
+            cpu: "2"
+        {{- end }}
+        ports:
+        - containerPort: 6817
+          name: slurmctld
+          protocol: TCP
+        - containerPort: 6819
+          name: slurmd
+          protocol: TCP
+        securityContext:
+          runAsUser: 64030
+          runAsGroup: 64030
+        volumeMounts:
+        - name: slurm-key
+          mountPath: /etc/slurm/slurm.key
+          subPath: slurm.key
+        - name: slurm-config
+          mountPath: /etc/slurm/slurm.conf
+          subPath: slurm.conf
+        - name: cgroup-config
+          mountPath: /etc/slurm/cgroup.conf
+          subPath: cgroup.conf
+        {{- if .Values.persistence.enabled }}
+        - name: shared-workdir
+          mountPath: /home/slurm/workdir
+        {{- end }}
+      volumes:
+      - name: slurm-key
+        secret:
+          secretName: {{ $name }}-secret
+          defaultMode: 400
+      - name: slurm-config
+        configMap:
+          name: {{ $name }}-configmap
+      - name: cgroup-config
+        configMap:
+          name: {{ $name }}-configmap
+      - name: shared-workdir
+        {{- if .Values.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ if .Values.persistence.existingClaim }}{{ .Values.persistence.existingClaim }}{{- else }}{{ $name }}-pvc{{- end }}
+        {{- else }}
+        emptyDir: {}
+        {{- end }}

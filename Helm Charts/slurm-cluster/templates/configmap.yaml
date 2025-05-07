@@ -1,0 +1,67 @@
+{{ $name := .Release.Name }}
+{{ $ctrname:= printf "%s-ctr" $name }}
+{{ $cptname:= printf "%s-cpt" $name }}
+{{ $namespace := .Release.Namespace }}
+{{ $memory :=  regexReplaceAll "(\\d+)(Gi)" .Values.compute.resources.limits.memory "$1" | int | mul 1024 }}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-configmap
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+data:
+  cgroup.conf: |
+    CgroupPlugin=disabled
+  slurm.conf: |
+    # cluster info
+    ClusterName={{ $name }}
+    {{- range $i, $v := until (int .Values.control.replicaCount) }}
+    SlurmctldHost={{ $ctrname }}-{{ $i }}({{ $ctrname }}-{{ $i }}.{{ $ctrname }}.{{ $namespace }}.svc.cluster.local)
+    {{- end }}
+    # auth
+    AuthType = auth/slurm
+    CredType = cred/slurm
+    SlurmctldPort=6817
+    SlurmdPort=6819
+    # custom path
+    SlurmctldPidFile=/home/slurm/slurmctld/slurmctld.pid
+    SlurmdPidFile=/home/slurm/slurmctld/slurmd.pid
+    SlurmdSpoolDir=/home/slurm/slurmd/spool
+    # state save location
+    StateSaveLocation=/home/slurm/slurmctld/spool
+    # slurm user
+    SlurmUser=slurm
+    SlurmdUser=slurm
+    # job scheduling
+    SchedulerType=sched/backfill
+    SelectType=select/cons_tres
+    SelectTypeParameters=CR_CPU_Memory
+    {{- if .Values.compute.resources.gpu.enabled }}
+    GresTypes=gpu
+    {{- end }}
+    # launch parameters
+    LaunchParameters=enable_cpu_binding,ignore_hw_threadcount
+    # compute node info and partition info
+    {{- if gt (int .Values.compute.replicaCount) 1 }}
+    NodeName={{ $cptname }}-[0-{{ sub .Values.compute.replicaCount 1 }}].{{ $cptname }}.{{ $namespace }}.svc.cluster.local CPUs={{ .Values.compute.resources.limits.cpu }} RealMemory={{ $memory }}
+      {{- if .Values.compute.resources.gpu.enabled -}}
+    {{- printf " GPUs=%d" (int .Values.compute.resources.gpu.resourceCount) }}
+      {{- end }}
+    PartitionName=compute Nodes={{ $cptname }}-[0-{{ sub .Values.compute.replicaCount 1 }}].{{ $cptname }}.{{ $namespace }}.svc.cluster.local Default=YES MaxTime=INFINITE State=UP
+    {{- else }}
+    NodeName={{ $cptname }}-0.{{ $cptname }}.{{ $namespace }}.svc.cluster.local CPUs={{ .Values.compute.resources.limits.cpu }} RealMemory={{ $memory }}
+      {{- if .Values.compute.resources.gpu.enabled }}
+    {{ printf " GPUs=%d" (int .Values.compute.resources.gpu.resourceCount) }}
+      {{- end }}
+    PartitionName=compute Nodes={{ $cptname }}-0.{{ $cptname }}.{{ $namespace }}.svc.cluster.local Default=YES MaxTime=INFINITE State=UP
+    {{- end }}
+    # timeout
+    SlurmdTimeout=300
+    SlurmctldTimeout=120
+    JobCompType=jobcomp/none
+    AccountingStorageType=none
+    JobAcctGatherType=none
+    ProctrackType=proctrack/linuxproc
+    TaskPlugin=task/none

@@ -1,0 +1,31 @@
+{{ $name := .Release.Name }}
+{{ $ctrname:= printf "%s-ctr" $name }}
+{{ $cptname:= printf "%s-cpt" $name }}
+{{ $namespace := .Release.Namespace }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $ctrname }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app: {{ $ctrname }}
+    slurm.cluster/role: ctr
+spec:
+  clusterIP: None
+  ports:
+  - protocol: TCP
+    name: slurmctld
+    port: 6817
+    targetPort: 6817
+  - protocol: TCP
+    name: slurmd
+    port: 6819
+    targetPort: 6819
+  - protocol: TCP
+    name: metrics
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: {{ $ctrname }}
+    slurm.cluster/role: ctr

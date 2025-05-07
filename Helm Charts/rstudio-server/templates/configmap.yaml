@@ -1,0 +1,31 @@
+{{ $name := .Release.Name }}
+{{ $namespace := .Release.Namespace }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-configmap
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "rstudio-server.labels" . | nindent 4 }}
+data:
+  rserver.conf: |
+    www-port=8787
+    www-address=0.0.0.0
+    {{- with index .Values.ingress.hosts 0 }}
+    www-allow-origin={{ .host }}
+    {{- end }}
+    www-verify-user-agent=0
+    server-user=rdev
+    auth-none=1
+    server-data-dir=/home/rdev
+    server-working-dir=/home/rdev
+  logging.conf: |
+    [*]
+    log-level=error
+    logger-type=stderr
+    [@rserver]
+    log-level=info
+    [@rsession]
+    log-level=error
+    logger-type=file
+
